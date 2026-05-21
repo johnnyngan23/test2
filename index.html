@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>發現蓮花效應：自潔現象探索實驗室</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* iPad Landscape aspect ratio layout guidelines */
+        @media (min-width: 1024px) {
+            .ipad-container {
+                width: 1024px;
+                height: 748px;
+                overflow: hidden;
+            }
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            transition: background .15s ease-in-out;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #4338ca;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen select-none">
+
+    <!-- 主容器 (優化 iPad 1024x768 橫向尺寸) -->
+    <div class="ipad-container bg-slate-50 shadow-2xl rounded-2xl flex flex-col relative w-full max-w-[1024px] h-[748px] border border-slate-200">
+        
+        <!-- ================= 登入阻擋層 ================= -->
+        <div id="loginOverlay" class="absolute inset-0 bg-slate-900/85 backdrop-blur-md z-50 flex justify-center items-center rounded-2xl">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl w-[420px] text-center border border-slate-100 flex flex-col gap-4">
+                <div class="mx-auto bg-indigo-50 p-4 rounded-full w-16 h-16 flex items-center justify-center">
+                    <i data-lucide="droplet" class="text-indigo-600 w-8 h-8"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">歡迎來到蓮花效應實驗室</h2>
+                    <p class="text-slate-500 text-sm mt-1">請先輸入您的學號以開始進行探究實驗</p>
+                </div>
+                
+                <!-- 教師對接防呆提醒橫幅 -->
+                <div id="urlWarningBanner" class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl p-3 text-left hidden space-y-1">
+                    <p class="font-bold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i> 教師提醒：</p>
+                    <p class="leading-relaxed">目前尚未設定試算表 API 網址，學生的數據將<b>無法上載</b>。請使用 <b>teacher</b> 登入並在「數據分析中心」儲存試算表 Web App 網址，或直接在 HTML 代碼中的 <code>DEFAULT_WEB_APP_URL</code> 填入網址並存檔分發。</p>
+                </div>
+
+                <div>
+                    <input type="text" id="studentIdInput" placeholder="請輸入學號 (如: S12345)" 
+                           class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center font-bold text-lg tracking-wider">
+                    <p id="loginError" class="text-red-500 text-xs mt-1.5 hidden">學號不能為空！</p>
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200 flex items-center justify-center gap-2">
+                    開始實驗 <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= 主標題欄 ================= -->
+        <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-500 p-1.5 rounded-lg text-white">
+                    <i data-lucide="droplet" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black text-slate-800 leading-tight">發現蓮花效應：自潔現象探索實驗室</h1>
+                    <p class="text-xs text-slate-400">發現與量度植物表面的神奇疏水與自潔現象</p>
+                </div>
+            </div>
+            <!-- 學生狀態 -->
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-100 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                    <i data-lucide="user" class="w-4 h-4 text-slate-500"></i>
+                    <span id="displayStudentId" class="text-sm font-bold text-slate-700">學生：未登入</span>
+                </div>
+                <button onclick="logout()" class="text-slate-400 hover:text-red-500 p-1.5 rounded transition">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- ================= 導覽分頁列 ================= -->
+        <nav class="bg-slate-50 border-b border-slate-200 p-1 flex shrink-0">
+            <button onclick="switchTab('angle')" id="tab-angle" class="flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 bg-indigo-500 text-white shadow-sm">
+                <i data-lucide="compass" class="w-4 h-4"></i> 功能一：量度接觸角
+            </button>
+            <button onclick="switchTab('diameter')" id="tab-diameter" class="flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100">
+                <i data-lucide="ruler" class="w-4 h-4"></i> 功能二：量度接觸面直徑
+            </button>
+            <button onclick="switchTab('self-cleaning')" id="tab-self-cleaning" class="flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> 功能三：傾斜與自潔測試
+            </button>
+            <button onclick="switchTab('analysis')" id="tab-analysis" class="flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100 hidden">
+                <i data-lucide="bar-chart-2" class="w-4 h-4"></i> 數據分析中心
+            </button>
+        </nav>
+
+        <!-- ================= 主操作視區 ================= -->
+        <main class="flex-grow p-4 overflow-y-auto">
+            
+            <!-- ===== 分頁一：接觸角量度 ===== -->
+            <div id="page-angle" class="page-content flex flex-col gap-4 h-full">
+                <div class="grid grid-cols-3 gap-4 shrink-0">
+                    <button onclick="selectLeaf('leafA')" class="leaf-btn leafA-btn border-2 border-indigo-500 bg-indigo-50 text-indigo-700 py-2.5 rounded-xl font-bold transition">葉片 A</button>
+                    <button onclick="selectLeaf('leafB')" class="leaf-btn leafB-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 B</button>
+                    <button onclick="selectLeaf('leafC')" class="leaf-btn leafC-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 C (蓮葉效應)</button>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4 flex-grow items-center">
+                    <div class="col-span-7 bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex justify-center">
+                        <canvas id="angleCanvas" width="500" height="300" class="max-w-full bg-slate-50 rounded-lg"></canvas>
+                    </div>
+                    <div class="col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-[316px]">
+                        <div>
+                            <h3 class="font-black text-slate-800 text-lg flex items-center gap-1.5"><i data-lucide="compass" class="text-indigo-500 w-5 h-5"></i>量度 1ml 水珠接觸角</h3>
+                            <p class="text-xs text-slate-400 mt-1">小心量度角度，接觸角是葉面和水滴接觸的角度。</p>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <input type="range" id="angleSlider" min="0" max="180" step="1" value="0" oninput="updateAngle(this.value)" class="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-slate-400 font-mono"><span>0°</span><span>90°</span><span>180°</span></div>
+                        </div>
+
+                        <div class="bg-indigo-50/70 border border-indigo-100 p-3 rounded-lg flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-slate-400 font-medium block">您當前量度的讀數</span>
+                                <span id="angleValueDisplay" class="text-2xl font-black text-indigo-700">0°</span>
+                            </div>
+                            <button onclick="submitData('angle')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-lg shadow transition flex items-center gap-1.5">
+                                <i data-lucide="send" class="w-4 h-4"></i>傳送數據
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 分頁二：接觸面直徑量度 ===== -->
+            <div id="page-diameter" class="page-content flex flex-col gap-4 h-full hidden">
+                <div class="grid grid-cols-3 gap-4 shrink-0">
+                    <button onclick="selectLeaf('leafA')" class="leaf-btn leafA-btn border-2 border-blue-500 bg-blue-50 text-blue-700 py-2.5 rounded-xl font-bold transition">葉片 A</button>
+                    <button onclick="selectLeaf('leafB')" class="leaf-btn leafB-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 B</button>
+                    <button onclick="selectLeaf('leafC')" class="leaf-btn leafC-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 C (蓮葉效應)</button>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4 flex-grow items-center">
+                    <div class="col-span-7 bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex justify-center">
+                        <canvas id="diameterCanvas" width="500" height="300" class="max-w-full bg-slate-50 rounded-lg"></canvas>
+                    </div>
+                    <div class="col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-[316px]">
+                        <div>
+                            <h3 class="font-black text-slate-800 text-lg flex items-center gap-1.5"><i data-lucide="ruler" class="text-blue-500 w-5 h-5"></i>量度 1ml 接觸面直徑</h3>
+                            <p class="text-xs text-slate-400 mt-1">請拖曳卡尺標規，精確量測水珠底部的接觸寬度</p>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <input type="range" id="diameterSlider" min="0" max="30" step="1" value="0" oninput="updateDiameter(this.value)" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-slate-400 font-mono"><span>0mm</span><span>15mm</span><span>30mm</span></div>
+                        </div>
+
+                        <div class="bg-blue-50/70 border border-blue-100 p-3 rounded-lg flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-slate-400 font-medium block">您當前量度的讀數</span>
+                                <span id="diameterValueDisplay" class="text-2xl font-black text-blue-700">0mm</span>
+                            </div>
+                            <button onclick="submitData('diameter')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg shadow transition flex items-center gap-1.5">
+                                <i data-lucide="send" class="w-4 h-4"></i>傳送數據
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 分頁三：自潔測試區 ===== -->
+            <div id="page-self-cleaning" class="page-content flex flex-col gap-4 h-full hidden">
+                <div class="grid grid-cols-3 gap-4 shrink-0">
+                    <button onclick="selectLeaf('leafA')" class="leaf-btn leafA-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 A</button>
+                    <button onclick="selectLeaf('leafB')" class="leaf-btn leafB-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition">葉片 B</button>
+                    <button onclick="selectLeaf('leafC')" class="leaf-btn leafC-btn border-2 border-emerald-500 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl font-bold transition">葉片 C (蓮葉效應)</button>
+                </div>
+
+                <div class="grid grid-cols-12 gap-4 flex-grow items-center">
+                    <div class="col-span-8 bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex justify-center">
+                        <canvas id="selfCleanCanvas" width="550" height="300" class="max-w-full bg-slate-50 rounded-lg"></canvas>
+                    </div>
+                    <div class="col-span-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-[316px]">
+                        <div>
+                            <h3 class="font-black text-slate-800 text-lg flex items-center gap-1.5"><i data-lucide="sparkles" class="text-emerald-500 w-5 h-5"></i>葉片自潔模擬測試</h3>
+                            <p class="text-xs text-slate-400 mt-1">點擊下方按鈕測試傾斜時水滴攜帶粉塵的效果</p>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 border border-slate-200 rounded-xl text-center space-y-1 shadow-inner">
+                            <span class="text-xs text-slate-400 font-bold tracking-wider uppercase block">葉面殘留粉塵</span>
+                            <div class="flex items-baseline justify-center gap-1">
+                                <span id="dustCounterDisplay" class="text-4xl font-black text-slate-800 font-mono">40</span>
+                                <span class="text-xs text-slate-500 font-bold">粒 (初始: 40)</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <button id="startTestBtn" onclick="startSelfCleanTest()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                                <i data-lucide="play" class="w-4 h-4"></i>開始傾斜測試 (水向右傾)
+                            </button>
+                            <button onclick="submitData('dust')" id="submitDustBtn" disabled class="w-full bg-slate-200 text-slate-400 font-bold py-2.5 px-4 rounded-xl cursor-not-allowed transition flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-4 h-4"></i>傳送粉塵殘留數據
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 分頁四：數據分析中心 ===== -->
+            <div id="page-analysis" class="page-content flex flex-col gap-4 h-full hidden">
+                <div class="grid grid-cols-12 gap-4 h-full">
+                    
+                    <!-- 左半：數據視覺化報表 -->
+                    <div id="analysis-charts-card" class="col-span-12 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-black text-slate-800 text-lg flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="text-indigo-500 w-5 h-5"></i> 全班歷史實驗數據平均</h3>
+                                <button onclick="refreshData()" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg transition">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 重新載入數據
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">即時分析整合全班學生的真實提交數據</p>
+                        </div>
+
+                        <div class="flex flex-col gap-3 mt-2 h-full justify-between">
+                            <!-- 橫向動態條形圖 -->
+                            <div class="space-y-3">
+                                <!-- 圖表 1：平均接觸角 -->
+                                <div class="space-y-1">
+                                    <span class="text-xs font-bold text-slate-600 block">各葉片平均接觸角 (θc) ─ 數值越高表示越疏水</span>
+                                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex flex-col gap-1.5 text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-14 font-semibold text-slate-500">葉片 A:</span>
+                                            <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                <div id="bar-angle-A" class="bg-indigo-400 h-full transition-all duration-1000" style="width: 0%"></div>
+                                            </div>
+                                            <span id="txt-angle-A" class="w-12 text-right font-bold text-indigo-700">0.0°</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-14 font-semibold text-slate-500">葉片 B:</span>
+                                            <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                <div id="bar-angle-B" class="bg-indigo-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                            </div>
+                                            <span id="txt-angle-B" class="w-12 text-right font-bold text-indigo-700">0.0°</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-14 font-semibold text-slate-500">葉片 C:</span>
+                                            <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                <div id="bar-angle-C" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                            </div>
+                                            <span id="txt-angle-C" class="w-12 text-right font-bold text-emerald-700">0.0°</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 圖表 2 & 3 並排 (節省空間) -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- 圖表 2：平均接觸面直徑 -->
+                                    <div class="space-y-1">
+                                        <span class="text-xs font-bold text-slate-600 block">各葉片平均接觸面直徑</span>
+                                        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex flex-col gap-1.5 text-xs">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">A:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dia-A" class="bg-blue-400 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dia-A" class="w-14 text-right font-bold text-blue-700">0.0mm</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">B:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dia-B" class="bg-blue-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dia-B" class="w-14 text-right font-bold text-blue-700">0.0mm</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">C:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dia-C" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dia-C" class="w-14 text-right font-bold text-emerald-700">0.0mm</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 圖表 3：平均殘留粉塵 -->
+                                    <div class="space-y-1">
+                                        <span class="text-xs font-bold text-slate-600 block">各葉片平均殘留粉塵數量</span>
+                                        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex flex-col gap-1.5 text-xs">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">A:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dust-A" class="bg-amber-400 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dust-A" class="w-12 text-right font-bold text-amber-700">0.0粒</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">B:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dust-B" class="bg-amber-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dust-B" class="w-12 text-right font-bold text-amber-700">0.0粒</span>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-8 font-semibold text-slate-500">C:</span>
+                                                <div class="flex-grow bg-slate-200 h-3 rounded overflow-hidden">
+                                                    <div id="bar-dust-C" class="bg-emerald-500 h-full transition-all duration-1000" style="width: 0%"></div>
+                                                </div>
+                                                <span id="txt-dust-C" class="w-12 text-right font-bold text-emerald-700">0.0粒</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 視覺化水滴形態對比區 -->
+                            <div class="mt-2 border-t border-slate-100 pt-3">
+                                <span class="text-sm font-bold text-slate-700 block mb-2 flex items-center gap-1.5"><i data-lucide="droplet" class="w-4 h-4 text-blue-500"></i> 全班平均數據 ─ 視覺化水滴形態對比</span>
+                                <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex justify-center p-2 shadow-inner">
+                                    <canvas id="comparisonCanvas" width="750" height="250" class="max-w-full"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右半：教師部署說明與設定 (預設隱藏，僅對教師顯示) -->
+                    <div id="analysis-settings-card" class="col-span-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-black text-slate-800 text-lg flex items-center gap-1.5"><i data-lucide="settings" class="text-slate-600 w-5 h-5"></i> 雲端整合設定</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">將本機與 Google Apps Script 後端串接</p>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-600 block">試算表 Web App API 網址</label>
+                                <input type="text" id="webAppUrlInput" placeholder="請貼上 Apps Script 網頁應用程式網址" 
+                                       class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none font-mono">
+                                <button onclick="saveApiUrl()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-lg text-xs transition">
+                                    儲存 API 網址
+                                </button>
+                            </div>
+
+                            <!-- Apps Script 部署步驟教學 -->
+                            <div class="border-t border-slate-100 pt-3 space-y-2">
+                                <span class="text-xs font-bold text-slate-700 block">🔑 教師雲端串接三步驟：</span>
+                                <ol class="text-[11px] text-slate-500 list-decimal pl-4 space-y-1">
+                                    <li>在您的試算表點選「擴充功能」 ➜ 「Apps Script」。</li>
+                                    <li>複製貼上右側下方的對接代碼，按儲存。</li>
+                                    <li>點選「部署」➜「新增部署」➜ 類型選「網頁應用程式」，將存取權設為「任何人」，部署後將 URL 貼至上方。</li>
+                                </ol>
+                            </div>
+
+                            <!-- 試算表快速連結 -->
+                            <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex flex-col gap-2 mt-4 text-center">
+                                <span class="text-indigo-800 text-xs font-bold block">📢 前往查看 Google 試算表後台以確認最新學術統計。</span>
+                                <a href="https://docs.google.com/spreadsheets/d/1OumjRYG2OOI56ynNbkPQYwY_1tSWyeKa-surUZhMG4Y/edit?usp=sharing" target="_blank" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition flex justify-center items-center gap-1.5">
+                                    開啟 Google 試算表 <i data-lucide="external-link" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- 展開代碼彈窗 -->
+                        <button onclick="toggleScriptModal(true)" class="w-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-bold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-1.5 mt-4">
+                            <i data-lucide="code" class="w-5 h-5"></i> 複製 Apps Script 原始碼
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ================= 全局提示對話框 ================= -->
+        <div id="toastNotification" class="absolute bottom-5 right-5 bg-slate-800/90 backdrop-blur text-white px-5 py-3 rounded-xl shadow-2xl z-50 transform translate-y-10 opacity-0 transition-all duration-300 flex items-center gap-2">
+            <i id="toastIcon" data-lucide="info" class="w-5 h-5 text-indigo-400"></i>
+            <span id="toastMessage" class="text-sm font-bold"></span>
+        </div>
+
+        <!-- ================= 程式碼複製彈窗 ================= -->
+        <div id="codeModal" class="absolute inset-0 bg-slate-900/60 backdrop-blur z-50 flex justify-center items-center rounded-2xl hidden">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-[600px] flex flex-col gap-4 border border-slate-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-black text-slate-800 text-lg">Google Apps Script 接合代碼</h3>
+                    <button onclick="toggleScriptModal(false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <textarea id="scriptCodeArea" readonly class="w-full h-80 p-3 bg-slate-50 rounded-lg text-xs font-mono border border-slate-200 focus:outline-none"></textarea>
+                <div class="flex gap-2 justify-end">
+                    <button onclick="copyAppsScript()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-lg text-sm transition">複製程式碼</button>
+                    <button onclick="toggleScriptModal(false)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-5 rounded-lg text-sm transition">關閉</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==========================================
+         JavaScript 邏輯與物理引擎控制
+         ========================================== -->
+    <script>
+        // ==========================================
+        // 核心數據設定：三片葉片數據，葉片 C 為蓮葉效應代表
+        // ==========================================
+        const LEAVES = {
+            leafA: {
+                id: 'leafA', name: '葉片 A', 
+                angle: 53, diameter: 18, friction: 0.15, targetLeftDust: 34, hasTrail: true, color: '#81c784'
+            },
+            leafB: {
+                id: 'leafB', name: '葉片 B', 
+                angle: 70, diameter: 14, friction: 0.1, targetLeftDust: 28, hasTrail: true, color: '#aed581'
+            },
+            leafC: {
+                id: 'leafC', name: '葉片 C (蓮葉效應)', 
+                angle: 104, diameter: 8, friction: 0.04, targetLeftDust: 16, hasTrail: false, color: '#4db6ac'
+            }
+        };
+
+        // ------------------ 全局變數與狀態 ------------------
+        const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzEHVmD3_4_JexIP2ZNTgU23S08bm2kWuMjqBbHq--gE86qJIx0K2r-nBbBFmy3vlYi/exec"; 
+
+        let currentTab = 'angle';
+        let currentLeaf = 'leafA';
+        let studentId = '';
+        let webAppUrl = DEFAULT_WEB_APP_URL || localStorage.getItem('lotus_web_app_url') || '';
+
+        // 學生本次實驗自有的紀錄數據
+        let studentRecords = {
+            angle: { leafA: null, leafB: null, leafC: null },
+            diameter: { leafA: null, leafB: null, leafC: null },
+            dust: { leafA: null, leafB: null, leafC: null }
+        };
+
+        // 用於追蹤「是否已經進行操作但未傳送數據」
+        let unsavedChanges = false;
+
+        let mockClassDatabase = [];
+
+        const canvasAngle = document.getElementById('angleCanvas');
+        const canvasDia = document.getElementById('diameterCanvas');
+        const canvasClean = document.getElementById('selfCleanCanvas');
+
+        // ------------------ 登入邏輯 ------------------
+        function handleLogin() {
+            const val = document.getElementById('studentIdInput').value.trim();
+            if (!val) {
+                document.getElementById('loginError').classList.remove('hidden');
+                return;
+            }
+            studentId = val;
+            document.getElementById('loginOverlay').classList.add('hidden');
+            
+            const isTeacher = (studentId.toLowerCase() === 'teacher');
+            
+            if (isTeacher) {
+                document.getElementById('displayStudentId').innerText = `教師帳戶`;
+                showToast('教師登入成功！已開啟完整設定權限。', 'check-circle');
+                
+                document.getElementById('analysis-settings-card').classList.remove('hidden');
+                document.getElementById('analysis-charts-card').className = "col-span-8 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between";
+            } else {
+                document.getElementById('displayStudentId').innerText = `學生學號：${studentId}`;
+                showToast('學生登入成功，祝你實驗順利！', 'check-circle');
+                
+                document.getElementById('analysis-settings-card').classList.add('hidden');
+                document.getElementById('analysis-charts-card').className = "col-span-12 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between";
+            }
+            
+            // 初始化進入第一個分頁
+            switchTab('angle', true);
+        }
+
+        function logout() {
+            studentId = '';
+            document.getElementById('studentIdInput').value = '';
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('displayStudentId').innerText = `學生：未登入`;
+            
+            document.getElementById('analysis-settings-card').classList.add('hidden');
+            document.getElementById('analysis-charts-card').className = "col-span-12 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between";
+            
+            currentTab = 'angle';
+            unsavedChanges = false;
+        }
+
+        // ------------------ 分頁管理與防呆驗證 ------------------
+        function switchTab(tabId, force = false) {
+            if (!force && unsavedChanges) {
+                showToast('請先點擊【傳送數據】保存當前實驗結果，再切換頁面！', 'alert-triangle');
+                return;
+            }
+
+            if (!force && tabId === 'analysis' && studentId.toLowerCase() !== 'teacher') {
+                let isComplete = true;
+                const types = ['angle', 'diameter', 'dust'];
+                const leaves = ['leafA', 'leafB', 'leafC'];
+                
+                for (let t of types) {
+                    for (let l of leaves) {
+                        if (studentRecords[t][l] === null) {
+                            isComplete = false;
+                            break;
+                        }
+                    }
+                    if (!isComplete) break;
+                }
+
+                if (!isComplete) {
+                    showToast('請先完成並傳送所有葉片（A、B、C）的三項實驗數據，才能解鎖數據分析中心！', 'alert-triangle');
+                    return; 
+                }
+            }
+
+            currentTab = tabId;
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`page-${tabId}`).classList.remove('hidden');
+
+            const tabs = ['angle', 'diameter', 'self-cleaning', 'analysis'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tabId) {
+                    btn.className = `flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 bg-${tabId === 'self-cleaning' ? 'emerald' : (tabId === 'diameter' ? 'blue' : 'indigo')}-500 text-white shadow-sm`;
+                } else {
+                    btn.className = `flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100`;
+                }
+            });
+
+            // 強制重置為葉片 A
+            if (tabId !== 'analysis') {
+                selectLeaf('leafA', true);
+            }
+
+            if (tabId === 'analysis') {
+                calculateAverages();
+            }
+        }
+
+        // ------------------ 選擇觀察植物 ------------------
+        function selectLeaf(leafId, force = false) {
+            if (!force && unsavedChanges && currentLeaf !== leafId) {
+                showToast('請先點擊【傳送數據】保存當前葉片結果，再切換葉片！', 'alert-triangle');
+                return;
+            }
+
+            currentLeaf = leafId;
+            unsavedChanges = false;
+            
+            document.querySelectorAll('#page-angle .leaf-btn').forEach(btn => {
+                btn.className = btn.classList.contains(`${leafId}-btn`) 
+                    ? `leaf-btn ${leafId}-btn border-2 border-indigo-500 bg-indigo-50 text-indigo-700 py-2.5 rounded-xl font-bold transition flex-1`
+                    : `leaf-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition flex-1`;
+            });
+
+            document.querySelectorAll('#page-diameter .leaf-btn').forEach(btn => {
+                btn.className = btn.classList.contains(`${leafId}-btn`) 
+                    ? `leaf-btn ${leafId}-btn border-2 border-blue-500 bg-blue-50 text-blue-700 py-2.5 rounded-xl font-bold transition flex-1`
+                    : `leaf-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition flex-1`;
+            });
+
+            document.querySelectorAll('#page-self-cleaning .leaf-btn').forEach(btn => {
+                btn.className = btn.classList.contains(`${leafId}-btn`) 
+                    ? `leaf-btn ${leafId}-btn border-2 border-emerald-500 bg-emerald-50 text-emerald-700 py-2.5 rounded-xl font-bold transition flex-1`
+                    : `leaf-btn border border-slate-200 bg-white hover:bg-slate-50 py-2.5 rounded-xl font-bold text-slate-700 transition flex-1`;
+            });
+
+            if (currentTab === 'angle') {
+                document.getElementById('angleSlider').value = 0;
+                updateAngle(0, false);
+            } else if (currentTab === 'diameter') {
+                document.getElementById('diameterSlider').value = 0;
+                updateDiameter(0, false);
+            } else if (currentTab === 'self-cleaning') {
+                resetSelfCleanEnvironment();
+            }
+        }
+
+        // ------------------ 數據儲存與傳送 ------------------
+        function saveApiUrl() {
+            const url = document.getElementById('webAppUrlInput').value.trim();
+            webAppUrl = url;
+            localStorage.setItem('lotus_web_app_url', url);
+            showToast('API 網址已儲存！', 'check');
+            
+            if (webAppUrl) {
+                document.getElementById('urlWarningBanner').classList.add('hidden');
+            } else {
+                document.getElementById('urlWarningBanner').classList.remove('hidden');
+            }
+        }
+
+        function submitData(type) {
+            const leaf = LEAVES[currentLeaf];
+            let val = 0;
+            
+            if (type === 'angle') {
+                val = parseInt(document.getElementById('angleSlider').value);
+                const deviation = Math.abs(val - leaf.angle);
+                if (deviation > 10) {
+                    showToast(`量度角度（${val}°）與真實接觸角偏差大於 10°（目前偏差：${deviation}°），請調整後再傳送！`, 'alert-triangle');
+                    return;
+                }
+                studentRecords.angle[currentLeaf] = val;
+            } else if (type === 'diameter') {
+                val = parseInt(document.getElementById('diameterSlider').value);
+                if (val !== leaf.diameter) {
+                    showToast(`量度接觸面直徑（${val} mm）不正確，與此葉面的真實直徑不符，請調整後再傳送！`, 'alert-triangle');
+                    return;
+                }
+                studentRecords.diameter[currentLeaf] = val;
+            } else if (type === 'dust') {
+                val = parseInt(document.getElementById('dustCounterDisplay').innerText);
+                studentRecords.dust[currentLeaf] = val;
+            }
+
+            const existIndex = mockClassDatabase.findIndex(r => r.id === studentId);
+            const dataKey = `${currentLeaf}_${type}`;
+
+            if (existIndex > -1) {
+                mockClassDatabase[existIndex][dataKey] = val;
+            } else {
+                const newRecord = { id: studentId };
+                newRecord[dataKey] = val;
+                mockClassDatabase.push(newRecord);
+            }
+
+            unsavedChanges = false;
+            showToast(`成功記錄您的 ${LEAVES[currentLeaf].name} [${type === 'angle' ? '接觸角' : (type === 'diameter' ? '直徑' : '粉塵')}]：${val}`, 'save');
+
+            if (webAppUrl) {
+                const details = {
+                    studentId: studentId,
+                    leaf: currentLeaf,
+                    dataType: type,
+                    value: val
+                };
+
+                const formBody = [];
+                for (const property in details) {
+                    const encodedKey = encodeURIComponent(property);
+                    const encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                }
+                const bodyContent = formBody.join("&");
+
+                fetch(webAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, 
+                    body: bodyContent
+                })
+                .then(() => {
+                    showToast('數據已即時同步上傳至 Google 試算表！', 'cloud-lightning');
+                })
+                .catch(err => {
+                    console.error("Upload error:", err);
+                    showToast('網絡傳送失敗，已先記錄於本地快取！', 'alert-triangle');
+                });
+            } else {
+                showToast('尚未設定 API 網址，數據僅能記錄於本機暫存！', 'alert-triangle');
+            }
+        }
+
+        // ------------------ 功能一：量度接觸角邏輯 ------------------
+        function updateAngle(val, isUserInteraction = true) {
+            if (isUserInteraction) unsavedChanges = true;
+            document.getElementById('angleValueDisplay').innerText = `${val}°`;
+            const leaf = LEAVES[currentLeaf];
+            const ctx = canvasAngle.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvasAngle.width, canvasAngle.height);
+            const cx = canvasAngle.width / 2;
+            const cy = 250;
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            ctx.fillStyle = leaf.color;
+            ctx.fillRect(-cx, 0, canvasAngle.width, 100);
+
+            const caRad = leaf.angle * Math.PI / 180;
+            const denom = caRad - Math.sin(caRad) * Math.cos(caRad);
+            const R = Math.sqrt(35000 / denom); 
+            
+            const cy_sphere = R * Math.cos(caRad);
+            const contactRadius = R * Math.sin(caRad);
+            const startArcAngle = Math.atan2(0 - cy_sphere, contactRadius);
+            const endArcAngle = Math.atan2(0 - cy_sphere, -contactRadius);
+
+            ctx.fillStyle = 'rgba(64, 196, 255, 0.6)';
+            ctx.strokeStyle = 'rgba(64, 196, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, cy_sphere, R, startArcAngle, endArcAngle, true);
+            ctx.fill();
+            ctx.stroke();
+
+            // =====================================
+            // 修正重點：在畫布固定位置顯示葉片名稱，避免水滴過大被裁切
+            // =====================================
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`【 ${leaf.name} 】`, 0, -210);
+
+            const userRad = val * Math.PI / 180;
+            const tangentAngle = -Math.PI + userRad;
+            
+            ctx.strokeStyle = '#334155'; 
+            ctx.lineWidth = 2.5;
+            const tanLength = 80;
+            ctx.beginPath();
+            ctx.moveTo(contactRadius, 0);
+            ctx.lineTo(contactRadius + tanLength * Math.cos(tangentAngle), tanLength * Math.sin(tangentAngle)); 
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(contactRadius, 0, 45, -Math.PI, tangentAngle, false);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.beginPath(); ctx.arc(contactRadius, 0, 100, -Math.PI, 0); ctx.stroke();
+            for(let i=0; i<=180; i+=10) {
+                let a = -Math.PI + (i*Math.PI/180);
+                ctx.beginPath();
+                const tickLength = (i % 30 === 0) ? 10 : 6;
+                ctx.moveTo(contactRadius + (100 - tickLength)*Math.cos(a), (100 - tickLength)*Math.sin(a));
+                ctx.lineTo(contactRadius + 100*Math.cos(a), 100*Math.sin(a));
+                ctx.stroke();
+            }
+
+            // 動態測量數值跟隨水滴高度
+            ctx.fillStyle = '#b91c1c';
+            ctx.font = 'bold 26px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`θc = ${val}°`, 0, cy_sphere - R - 20);
+
+            ctx.restore();
+        }
+
+        // ------------------ 功能二：量度接觸面直徑邏輯 ------------------
+        function updateDiameter(val, isUserInteraction = true) {
+            if (isUserInteraction) unsavedChanges = true;
+            document.getElementById('diameterValueDisplay').innerText = `${val}mm`; 
+            const leaf = LEAVES[currentLeaf];
+            const ctx = canvasDia.getContext('2d');
+            
+            ctx.clearRect(0, 0, canvasDia.width, canvasDia.height);
+            const cx = canvasDia.width / 2;
+            const cy = 200;
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            ctx.fillStyle = leaf.color;
+            ctx.fillRect(-cx, 0, canvasDia.width, 100);
+
+            const caRad = leaf.angle * Math.PI / 180;
+            const denom = caRad - Math.sin(caRad) * Math.cos(caRad);
+            const R = Math.sqrt(35000 / denom); 
+            
+            const cy_sphere = R * Math.cos(caRad);
+            const contactRadius = R * Math.sin(caRad);
+            const startArcAngle = Math.atan2(0 - cy_sphere, contactRadius);
+            const endArcAngle = Math.atan2(0 - cy_sphere, -contactRadius);
+
+            ctx.fillStyle = 'rgba(64, 196, 255, 0.6)';
+            ctx.strokeStyle = 'rgba(64, 196, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, cy_sphere, R, startArcAngle, endArcAngle, true);
+            ctx.fill();
+            ctx.stroke();
+
+            // 修正：畫布固定位置顯示葉片名稱
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`【 ${leaf.name} 】`, 0, -165);
+
+            const pxPerMm = (contactRadius * 2) / leaf.diameter;
+            const measurePx = val * pxPerMm;
+            const leftX = -measurePx / 2;
+            const rightX = measurePx / 2;
+
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(leftX, 40);
+            ctx.lineTo(rightX, 40);
+            ctx.moveTo(leftX, 10); ctx.lineTo(leftX, 55);
+            ctx.moveTo(rightX, 10); ctx.lineTo(rightX, 55);
+            ctx.stroke();
+
+            ctx.fillStyle = '#2563eb';
+            if (measurePx > 20) {
+                ctx.beginPath(); ctx.moveTo(leftX, 40); ctx.lineTo(leftX+8, 35); ctx.lineTo(leftX+8, 45); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(rightX, 40); ctx.lineTo(rightX-8, 35); ctx.lineTo(rightX-8, 45); ctx.fill();
+            }
+
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`直徑 = ${val}mm`, 0, 80);
+            
+            ctx.restore();
+        }
+
+        // ------------------ 功能三：自潔模擬測試與隨機誤差 ------------------
+        let cleanState = {
+            x: -250, v: 0, angle: 0, dusts: [], collected: [], trail: { min: -250, max: -250 },
+            animationFrame: null, targetLeftDust: 0
+        };
+
+        function resetSelfCleanEnvironment() {
+            if (cleanState.animationFrame) cancelAnimationFrame(cleanState.animationFrame);
+            unsavedChanges = false;
+            const leaf = LEAVES[currentLeaf];
+            
+            const randomOffset = Math.floor(Math.random() * 5) - 2; 
+            cleanState.targetLeftDust = leaf.targetLeftDust + randomOffset;
+
+            const TOTAL_DUSTS = 40;
+            const collectTargetCount = TOTAL_DUSTS - cleanState.targetLeftDust;
+
+            let newDusts = [];
+            for (let i = 0; i < TOTAL_DUSTS; i++) {
+                newDusts.push({
+                    x: -150 + Math.random() * 350,
+                    y: 0,
+                    size: Math.random() * 2 + 2,
+                    willCollect: false,
+                    collected: false
+                });
+            }
+
+            let shuffled = [...newDusts].sort(() => 0.5 - Math.random());
+            for (let i = 0; i < collectTargetCount; i++) {
+                shuffled[i].willCollect = true;
+            }
+
+            cleanState.x = -250;
+            cleanState.v = 0;
+            cleanState.angle = 0;
+            cleanState.dusts = newDusts;
+            cleanState.collected = [];
+            cleanState.trail = { min: -250, max: -250 };
+            
+            document.getElementById('dustCounterDisplay').innerText = TOTAL_DUSTS;
+            document.getElementById('startTestBtn').disabled = false;
+            document.getElementById('submitDustBtn').disabled = true;
+            document.getElementById('submitDustBtn').className = "w-full bg-slate-200 text-slate-400 font-bold py-2.5 px-4 rounded-xl cursor-not-allowed transition flex items-center justify-center gap-2";
+
+            drawSelfClean();
+        }
+
+        function startSelfCleanTest() {
+            document.getElementById('startTestBtn').disabled = true;
+            unsavedChanges = true; 
+            
+            const leaf = LEAVES[currentLeaf];
+            const canvas = canvasClean;
+            const ctx = canvas.getContext('2d');
+
+            function animate() {
+                cleanState.v += 0.15;
+                if (cleanState.v > 3) cleanState.v = 3;
+                cleanState.x += cleanState.v;
+
+                if (leaf.angle >= 100) cleanState.angle += cleanState.v / 25;
+
+                if (leaf.hasTrail) {
+                    cleanState.trail.max = cleanState.x;
+                }
+
+                const caRad = leaf.angle * Math.PI / 180;
+                const denom = caRad - Math.sin(caRad) * Math.cos(caRad);
+                const drawR = Math.sqrt(2800 / denom);
+
+                cleanState.dusts.forEach(d => {
+                    if (!d.collected && Math.abs(d.x - cleanState.x) < drawR * 0.8) {
+                        if (d.willCollect) {
+                            d.collected = true;
+                            cleanState.collected.push({
+                                a: -cleanState.angle + Math.random() * 6,
+                                r: Math.random() * (drawR * 0.6) + (drawR * 0.2),
+                                s: d.size
+                            });
+                        } else if (leaf.angle < 100) {
+                            d.x += cleanState.v * 0.6;
+                        }
+                    }
+                });
+
+                const remaining = cleanState.dusts.filter(d => !d.collected).length;
+                document.getElementById('dustCounterDisplay').innerText = remaining;
+
+                drawSelfClean();
+
+                if (cleanState.x < 300) {
+                    cleanState.animationFrame = requestAnimationFrame(animate);
+                } else {
+                    document.getElementById('submitDustBtn').disabled = false;
+                    document.getElementById('submitDustBtn').className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition flex items-center justify-center gap-2";
+                }
+            }
+
+            animate();
+        }
+
+        function drawSelfClean() {
+            const canvas = canvasClean;
+            const ctx = canvas.getContext('2d');
+            const leaf = LEAVES[currentLeaf];
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2 + 50);
+
+            if (cleanState.x > -240) ctx.rotate((5 * Math.PI) / 180);
+
+            ctx.fillStyle = leaf.color;
+            ctx.fillRect(-500, 0, 1000, 80);
+
+            // 畫未被吸附的粉塵
+            ctx.fillStyle = '#1e293b'; 
+            cleanState.dusts.forEach(d => {
+                if (!d.collected) {
+                    ctx.beginPath();
+                    ctx.arc(d.x, -d.size / 2, d.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            const caRad = leaf.angle * Math.PI / 180;
+            const denom = caRad - Math.sin(caRad) * Math.cos(caRad);
+            const drawR = Math.sqrt(2800 / denom);
+
+            if (leaf.hasTrail && cleanState.trail.max > -250) {
+                ctx.fillStyle = 'rgba(64, 196, 255, 0.3)';
+                ctx.fillRect(cleanState.trail.min, -5, cleanState.trail.max - cleanState.trail.min + drawR, 5);
+            }
+
+            ctx.save();
+            ctx.translate(cleanState.x, 0);
+
+            const cy_sphere = drawR * Math.cos(caRad);
+            const contactRadius = drawR * Math.sin(caRad);
+
+            // 水滴形狀
+            ctx.beginPath();
+            ctx.arc(0, cy_sphere, drawR, Math.atan2(-cy_sphere, contactRadius), Math.atan2(-cy_sphere, -contactRadius), true);
+            ctx.closePath();
+            
+            ctx.fillStyle = 'rgba(64, 196, 255, 0.4)';
+            ctx.fill();
+            
+            ctx.save();
+            ctx.clip();
+
+            if (cleanState.collected.length > 0) {
+                ctx.save();
+                ctx.translate(0, cy_sphere);
+                ctx.rotate(cleanState.angle);
+                ctx.fillStyle = '#0f172a'; 
+                cleanState.collected.forEach(d => {
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(d.a) * d.r, Math.sin(d.a) * d.r, d.s, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
+            }
+            
+            ctx.restore();
+            ctx.strokeStyle = 'rgba(64, 196, 255, 0.9)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // 修正：即時顯示葉片名稱，固定在上方，抵銷傾斜效果
+            ctx.fillStyle = '#1e293b';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.rotate((-5 * Math.PI) / 180); 
+            ctx.fillText(`【 ${leaf.name} 】`, 0, cy_sphere - drawR - 15);
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // ------------------ 功能四：數據整合與分析統計 ------------------
+        function calculateAverages() {
+            if (webAppUrl) {
+                fetch(webAppUrl)
+                .then(res => res.json())
+                .then(remoteData => {
+                    if (remoteData && remoteData.length > 0) {
+                        renderAverages(remoteData);
+                        showToast('成功從 Google 試算表獲取即時全班平均！', 'check-circle');
+                    } else {
+                        renderAverages(mockClassDatabase);
+                    }
+                })
+                .catch(err => {
+                    console.error("Fetch remote data error:", err);
+                    renderAverages(mockClassDatabase);
+                });
+            } else {
+                renderAverages(mockClassDatabase);
+            }
+        }
+
+        function renderAverages(dataset) {
+            const summary = {
+                leafA: { angles: [], diameters: [], dusts: [] },
+                leafB: { angles: [], diameters: [], dusts: [] },
+                leafC: { angles: [], diameters: [], dusts: [] }
+            };
+
+            dataset.forEach(r => {
+                if (r.leafA_angle) summary.leafA.angles.push(Number(r.leafA_angle));
+                if (r.leafB_angle) summary.leafB.angles.push(Number(r.leafB_angle));
+                if (r.leafC_angle) summary.leafC.angles.push(Number(r.leafC_angle));
+                
+                if (r.leafA_diameter) summary.leafA.diameters.push(Number(r.leafA_diameter));
+                if (r.leafB_diameter) summary.leafB.diameters.push(Number(r.leafB_diameter));
+                if (r.leafC_diameter) summary.leafC.diameters.push(Number(r.leafC_diameter));
+                
+                if (r.leafA_dust !== undefined && r.leafA_dust !== null && r.leafA_dust !== "") summary.leafA.dusts.push(Number(r.leafA_dust));
+                if (r.leafB_dust !== undefined && r.leafB_dust !== null && r.leafB_dust !== "") summary.leafB.dusts.push(Number(r.leafB_dust));
+                if (r.leafC_dust !== undefined && r.leafC_dust !== null && r.leafC_dust !== "") summary.leafC.dusts.push(Number(r.leafC_dust));
+            });
+
+            const getAvg = (arr) => {
+                if (arr.length === 0) return 0;
+                return arr.reduce((a, b) => a + b, 0) / arr.length;
+            };
+
+            const averages = {
+                leafA: {
+                    angle: getAvg(summary.leafA.angles),
+                    diameter: getAvg(summary.leafA.diameters),
+                    dust: getAvg(summary.leafA.dusts)
+                },
+                leafB: {
+                    angle: getAvg(summary.leafB.angles),
+                    diameter: getAvg(summary.leafB.diameters),
+                    dust: getAvg(summary.leafB.dusts)
+                },
+                leafC: {
+                    angle: getAvg(summary.leafC.angles),
+                    diameter: getAvg(summary.leafC.diameters),
+                    dust: getAvg(summary.leafC.dusts)
+                }
+            };
+
+            const updateBar = (id, avg, max, unit) => {
+                document.getElementById(`bar-${id}`).style.width = `${(avg / max) * 100}%`;
+                document.getElementById(`txt-${id}`).innerText = avg > 0 ? `${avg.toFixed(1)}${unit}` : `0${unit}`;
+            };
+
+            updateBar('angle-A', averages.leafA.angle, 180, '°');
+            updateBar('angle-B', averages.leafB.angle, 180, '°');
+            updateBar('angle-C', averages.leafC.angle, 180, '°');
+
+            updateBar('dia-A', averages.leafA.diameter, 30, 'mm');
+            updateBar('dia-B', averages.leafB.diameter, 30, 'mm');
+            updateBar('dia-C', averages.leafC.diameter, 30, 'mm');
+
+            updateBar('dust-A', averages.leafA.dust, 40, '粒');
+            updateBar('dust-B', averages.leafB.dust, 40, '粒');
+            updateBar('dust-C', averages.leafC.dust, 40, '粒');
+
+            drawComparison(averages);
+        }
+
+        function drawComparison(averages) {
+            const canvas = document.getElementById('comparisonCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const items = [
+                { title: '葉片 A', avgAngle: averages.leafA.angle, avgDia: averages.leafA.diameter, avgDust: averages.leafA.dust, color: '#81c784', cx: canvas.width * 1 / 6 },
+                { title: '葉片 B', avgAngle: averages.leafB.angle, avgDia: averages.leafB.diameter, avgDust: averages.leafB.dust, color: '#aed581', cx: canvas.width * 3 / 6 },
+                { title: '葉片 C', avgAngle: averages.leafC.angle, avgDia: averages.leafC.diameter, avgDust: averages.leafC.dust, color: '#4db6ac', cx: canvas.width * 5 / 6 }
+            ];
+
+            items.forEach(item => {
+                const cy = 130; 
+
+                ctx.fillStyle = item.color;
+                ctx.fillRect(item.cx - 110, cy, 220, 100);
+
+                ctx.fillStyle = '#334155';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText(item.title, item.cx, 25);
+
+                if (item.avgAngle === 0 && item.avgDia === 0) {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.fillText('尚無數據', item.cx, cy - 20);
+                    return;
+                }
+
+                const caRad = item.avgAngle * Math.PI / 180;
+                const denom = caRad - Math.sin(caRad) * Math.cos(caRad);
+                const R = Math.sqrt(12000 / denom); 
+                
+                const cy_sphere = R * Math.cos(caRad);
+                const contactRadius = R * Math.sin(caRad);
+                const startArcAngle = Math.atan2(0 - cy_sphere, contactRadius);
+                const endArcAngle = Math.atan2(0 - cy_sphere, -contactRadius);
+
+                ctx.save();
+                ctx.translate(item.cx, cy);
+
+                ctx.fillStyle = 'rgba(64, 196, 255, 0.6)';
+                ctx.strokeStyle = 'rgba(64, 196, 255, 0.9)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, cy_sphere, R, startArcAngle, endArcAngle, true);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const tangentAngle = -Math.PI + caRad;
+                ctx.arc(contactRadius, 0, 25, -Math.PI, tangentAngle, false);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                ctx.fillText(`接觸角: ${item.avgAngle.toFixed(1)}°`, 0, 25);
+                ctx.fillText(`直徑: ${item.avgDia.toFixed(1)}mm`, 0, 50);
+                
+                let absorbed = 40 - item.avgDust;
+                ctx.fillText(`吸收粉塵: ${absorbed.toFixed(1)}粒`, 0, 75);
+
+                ctx.restore();
+            });
+        }
+
+        function refreshData() {
+            calculateAverages();
+            showToast('班級數據平均已更新完成！', 'refresh-cw');
+        }
+
+        // ------------------ 工具與對話框控制 ------------------
+        function showToast(msg, iconName = 'info') {
+            const toast = document.getElementById('toastNotification');
+            const message = document.getElementById('toastMessage');
+            const icon = document.getElementById('toastIcon');
+
+            message.innerText = msg;
+            icon.setAttribute('data-lucide', iconName);
+            lucide.createIcons();
+
+            if (iconName === 'alert-triangle') {
+                toast.classList.remove('bg-slate-800/90');
+                toast.classList.add('bg-amber-600/95');
+            } else {
+                toast.classList.remove('bg-amber-600/95');
+                toast.classList.add('bg-slate-800/90');
+            }
+
+            toast.className = toast.className.replace('translate-y-10 opacity-0', 'translate-y-0 opacity-100');
+            
+            setTimeout(() => {
+                toast.className = toast.className.replace('translate-y-0 opacity-100', 'translate-y-10 opacity-0');
+            }, 4500); 
+        }
+
+        function toggleScriptModal(show) {
+            const modal = document.getElementById('codeModal');
+            if (show) {
+                modal.classList.remove('hidden');
+                document.getElementById('scriptCodeArea').value = `function doPost(e) {
+  var sheet = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1OumjRYG2OOI56ynNbkPQYwY_1tSWyeKa-surUZhMG4Y/edit").getActiveSheet();
+  
+  try {
+    var studentId, leaf, dataType, value;
+    
+    if (e.parameter && e.parameter.studentId) {
+      studentId = e.parameter.studentId;
+      leaf = e.parameter.leaf;
+      dataType = e.parameter.dataType;
+      value = Number(e.parameter.value);
+    } else if (e.postData && e.postData.contents) {
+      var data = JSON.parse(e.postData.contents);
+      studentId = data.studentId;
+      leaf = data.leaf;
+      dataType = data.dataType;
+      value = Number(data.value);
+    }
+
+    if (!studentId || !leaf || !dataType) {
+      return ContentService.createTextOutput("Error: Missing parameters");
+    }
+
+    var colMap = {
+      'leafA_angle': 3,
+      'leafB_angle': 4,
+      'leafC_angle': 5,
+      'leafA_diameter': 6,
+      'leafB_diameter': 7,
+      'leafC_diameter': 8,
+      'leafA_dust': 9,
+      'leafB_dust': 10,
+      'leafC_dust': 11
+    };
+    var col = colMap[leaf + '_' + dataType];
+    if (!col) return ContentService.createTextOutput("Error: Invalid leaf or dataType");
+
+    var lastRow = sheet.getLastRow();
+    var studentRow = -1;
+    if (lastRow >= 2) {
+      var ids = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+      for (var i = 0; i < ids.length; i++) {
+        if (ids[i][0].toString().trim() === studentId.toString().trim()) {
+          studentRow = i + 2; 
+          break;
+        }
+      }
+    }
+
+    if (studentRow !== -1) {
+      sheet.getRange(studentRow, col).setValue(value);
+      sheet.getRange(studentRow, 1).setValue(new Date()); 
+    } else {
+      var newRow = Array(11).fill("");
+      newRow[0] = new Date();
+      newRow[1] = studentId;
+      newRow[col - 1] = value;
+      sheet.appendRow(newRow);
+    }
+    return ContentService.createTextOutput("Success");
+  } catch(error) {
+    return ContentService.createTextOutput("Error: " + error.toString());
+  }
+}
+
+function doGet(e) {
+  var sheet = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1OumjRYG2OOI56ynNbkPQYwY_1tSWyeKa-surUZhMG4Y/edit").getActiveSheet();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  }
+  var dataRange = sheet.getRange(2, 1, lastRow - 1, 11);
+  var values = dataRange.getValues();
+  var records = [];
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    records.push({
+      studentId: row[1],
+      leafA_angle: row[2],
+      leafB_angle: row[3],
+      leafC_angle: row[4],
+      leafA_diameter: row[5],
+      leafB_diameter: row[6],
+      leafC_diameter: row[7],
+      leafA_dust: row[8],
+      leafB_dust: row[9],
+      leafC_dust: row[10]
+    });
+  }
+  return ContentService.createTextOutput(JSON.stringify(records)).setMimeType(ContentService.MimeType.JSON);
+}`;
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function copyAppsScript() {
+            const copyText = document.getElementById("scriptCodeArea");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            showToast('Apps Script 接合程式碼已成功複製！', 'clipboard');
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            document.getElementById('webAppUrlInput').value = webAppUrl;
+            
+            if (!webAppUrl) {
+                document.getElementById('urlWarningBanner').classList.remove('hidden');
+            } else {
+                document.getElementById('urlWarningBanner').classList.add('hidden');
+            }
+        };
+    </script>
+</body>
+</html>
